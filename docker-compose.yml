@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  user-service:
+    build: ./cmd
+    ports:
+      - "8080:8080"
+    networks:
+      - microservice
+
+networks:
+  microservices-network:
+    driver: bridge
