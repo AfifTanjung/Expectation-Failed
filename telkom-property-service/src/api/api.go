@@ -3,21 +3,27 @@ package api
 import (
 	"log"
 	"telkom-property-service/pkg"
+	"time"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+
 	alatController "telkom-property-service/src/feature/alat/controller"
 	alatRepo "telkom-property-service/src/feature/alat/repository"
 	alatService "telkom-property-service/src/feature/alat/services"
 
-	RawController "telkom-property-service/src/feature/raw/controller"
+	rawController "telkom-property-service/src/feature/raw/controller"
 	rawRepo "telkom-property-service/src/feature/raw/repository"
 	rawService "telkom-property-service/src/feature/raw/service"
 
 	validCont "telkom-property-service/src/feature/valid/controller"
 	validRepo "telkom-property-service/src/feature/valid/repository"
 	validServ "telkom-property-service/src/feature/valid/service"
-	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
+	maintController "telkom-property-service/src/feature/maintenance/controller"
+	maintRepo "telkom-property-service/src/feature/maintenance/repository"
+	maintService "telkom-property-service/src/feature/maintenance/service"
 )
 
 func SetupRoutes() *gin.Engine {
@@ -30,20 +36,39 @@ func SetupRoutes() *gin.Engine {
 	}
 	logger := log.Default()
 
+	// Alat Dependencies
 	alatRepo := alatRepo.NewAlatRepository(db, logger)
 	alatService := alatService.NewAlatService(alatRepo, logger)
 	alatCtrl := alatController.NewAlatController(alatService)
 
+	// Raw Dependencies
 	rawRepo := rawRepo.NewRawRepository(db, logger)
 	rawService := rawService.NewRawService(rawRepo, logger)
-	rawCtrl := RawController.NewRawController(rawService)
+	rawCtrl := rawController.NewRawController(rawService)
 
+	// Validation Dependencies
 	validRepo := validRepo.NewValidationRepository(db, logger)
 	validService := validServ.NewValidationService(validRepo)
 	validCtrl := validCont.NewValidationController(validService)
 
+	// Maintenance Dependencies
+	maintRepo := maintRepo.NewMaintenanceRepository(db, logger)
+	maintService := maintService.NewMaintenanceService(maintRepo, logger)
+	maintCtrl := maintController.NewMaintenanceController(maintService)
+
 	r := gin.Default()
 
+	// CORS Middleware
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
+	// Basic Routes
 	r.GET("/home", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "HTTP server listening",
@@ -67,6 +92,7 @@ func SetupRoutes() *gin.Engine {
 		})
 	})
 
+	// Alat Routes
 	alatsGroup := r.Group("/alats")
 	{
 		alatsGroup.POST("", alatCtrl.CreateAlat)
@@ -74,15 +100,27 @@ func SetupRoutes() *gin.Engine {
 		alatsGroup.GET("/stasiun/:stasiun", alatCtrl.GetByStasiun)
 	}
 
+	// Raw Routes
 	rawsGroup := r.Group("/raws")
 	{
 		rawsGroup.POST("/:alatId", rawCtrl.CreateByAlatId)
 		rawsGroup.GET("/:alatId", rawCtrl.GetById)
 	}
 
+	// Validation Routes
 	validationGroup := r.Group("/validations")
 	{
 		validationGroup.POST("/validate", validCtrl.ValidateDataHandler)
+	}
+
+	// Maintenance Routes
+	maintenanceGroup := r.Group("/maintenance")
+	{
+		maintenanceGroup.POST("/", maintCtrl.Create)
+		maintenanceGroup.PUT("/:id", maintCtrl.Update)
+		maintenanceGroup.DELETE("/:id", maintCtrl.Delete)
+		maintenanceGroup.GET("/:id", maintCtrl.GetLogById)
+		maintenanceGroup.GET("/lantai/:lantai", maintCtrl.GetLogByLantai)
 	}
 
 	return r

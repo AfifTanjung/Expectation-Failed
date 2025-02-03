@@ -38,6 +38,7 @@ func InitDb() (*gorm.DB, error) {
 		&model.Alat{},
 		&model.Raw{},
 		&model.Valid{},
+		&model.Maintenance{},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to perform database migrations: %w", err)

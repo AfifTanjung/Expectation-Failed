@@ -52,6 +52,7 @@ func (c *AlatController) GetByLantai(ctx *gin.Context) {
 		})
 		return
 	}
+
 	alats, err := c.service.GetAlatByLantai(ctx.Request.Context(), lantai)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -61,6 +62,7 @@ func (c *AlatController) GetByLantai(ctx *gin.Context) {
 		})
 		return
 	}
+
 	if len(alats) == 0 {
 		ctx.JSON(http.StatusNotFound, gin.H{
 			"success": true,
@@ -69,10 +71,23 @@ func (c *AlatController) GetByLantai(ctx *gin.Context) {
 		})
 		return
 	}
+	responseData := []gin.H{}
+	for _, alat := range alats {
+		responseData = append(responseData, gin.H{
+			"id":         alat.ID,
+			"nama":       alat.Nama,
+			"lantai":     alat.Lantai,
+			"stasiun":    alat.Stasiun,
+			"created_at": alat.CreatedAt,
+			"updated_at": alat.UpdatedAt,
+			"raw_count":  len(alat.Raws),
+		})
+	}
+
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Alat fetched successfully by lantai",
-		"data":    alats,
+		"data":    responseData,
 	})
 }
 

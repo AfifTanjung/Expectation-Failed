@@ -37,10 +37,14 @@ func (r *alatRepository) Create(ctx context.Context, alat model.Alat) error {
 func (r *alatRepository) GetByLantai(ctx context.Context, lantai int) ([]model.Alat, error) {
 	var alats []model.Alat
 	r.logger.Printf("[GetByLantai] Fetching alat for lantai=%d", lantai)
-	if err := r.db.WithContext(ctx).Where("lantai = ?", lantai).Find(&alats).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Raws").Where("lantai = ?", lantai).Find(&alats).Error; err != nil {
 		r.logger.Printf("[GetByLantai] Error fetching alat: %v", err)
 		return nil, err
 	}
+	for _, alat := range alats {
+		r.logger.Printf("[GetByLantai] Alat ID=%v has %d raws", alat.ID, len(alat.Raws))
+	}
+
 	r.logger.Printf("[GetByLantai] Successfully fetched %d alat(s)", len(alats))
 	return alats, nil
 }
