@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"telkom-property-service/src/feature/raw/repository"
 	"telkom-property-service/src/model"
 
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -24,43 +24,46 @@ type RawServices interface {
 
 type rawService struct {
 	repo   repository.RawRepository
-	logger *log.Logger
+	logger *logrus.Logger
 }
 
-func NewRawService(repo repository.RawRepository, logger *log.Logger) RawServices {
+func NewRawService(repo repository.RawRepository, logger *logrus.Logger) RawServices {
 	return &rawService{repo: repo, logger: logger}
 }
 
 func (s *rawService) CreateByAlatId(ctx context.Context, raw model.Raw) error {
-	s.logger.Printf("[INFO] [CreateByAlatId] Starting processing for AlatID: %s", raw.AlatID)
+	s.logger.WithField("AlatID", raw.AlatID).Info("[CreateByAlatId] Starting processing")
 	if raw.AlatID == uuid.Nil {
-		s.logger.Println("[ERROR] [CreateByAlatId] Validation failed: ", ErrEmptyAlatID)
+		s.logger.WithField("AlatID", raw.AlatID).Error("[CreateByAlatId] Validation failed: AlatID cannot be empty")
 		return fmt.Errorf("validation error: %w", ErrEmptyAlatID)
 	}
 	if err := s.repo.CreateByAlatId(ctx, raw); err != nil {
-		s.logger.Printf("[ERROR] [CreateByAlatId] Failed to create Raw data for AlatID: %s, Error: %v", raw.AlatID, err)
+		s.logger.WithField("AlatID", raw.AlatID).WithError(err).Error("[CreateByAlatId] Failed to create raw data")
 		return fmt.Errorf("failed to create raw data: %w", err)
 	}
 
-	s.logger.Printf("[INFO] [CreateByAlatId] Successfully created Raw data for AlatID: %s", raw.AlatID)
+	s.logger.WithField("AlatID", raw.AlatID).Info("[CreateByAlatId] Successfully created raw data")
 	return nil
 }
 
 func (s *rawService) GetById(ctx context.Context, alatID uuid.UUID) (*model.Alat, []model.Raw, error) {
-	s.logger.Printf("[INFO] [GetById] Fetching data for AlatID: %s", alatID)
+	s.logger.WithField("AlatID", alatID).Info("[GetById] Fetching data")
+
 	if alatID == uuid.Nil {
-		s.logger.Println("[ERROR] [GetById] Validation failed: ", ErrEmptyAlatID)
+		s.logger.WithField("AlatID", alatID).Error("[GetById] Validation failed: AlatID cannot be empty")
 		return nil, nil, fmt.Errorf("validation error: %w", ErrEmptyAlatID)
 	}
+
 	alat, raws, err := s.repo.GetById(ctx, alatID)
 	if err != nil {
-		s.logger.Printf("[ERROR] [GetById] Failed to fetch data for AlatID: %s, Error: %v", alatID, err)
+		s.logger.WithField("AlatID", alatID).WithError(err).Error("[GetById] Failed to fetch data")
 		return nil, nil, fmt.Errorf("failed to fetch data for AlatID %s: %w", alatID, err)
 	}
 	if alat == nil {
-		s.logger.Printf("[ERROR] [GetById] Alat not found for AlatID: %s", alatID)
+		s.logger.WithField("AlatID", alatID).Error("[GetById] Alat not found")
 		return nil, nil, fmt.Errorf("alat with ID %s not found: %w", alatID, ErrAlatNotFound)
 	}
-	s.logger.Printf("[INFO] [GetById] Successfully fetched data for AlatID: %s, Total records: %d", alatID, len(raws))
+
+	s.logger.WithField("AlatID", alatID).WithField("TotalRecords", len(raws)).Info("[GetById] Successfully fetched data")
 	return alat, raws, nil
 }

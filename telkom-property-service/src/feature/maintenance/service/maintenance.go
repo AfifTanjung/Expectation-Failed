@@ -2,11 +2,11 @@ package service
 
 import (
 	"context"
-	"log"
 	"telkom-property-service/src/feature/maintenance/repository"
 	"telkom-property-service/src/model"
 
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 type MaintenanceService interface {
@@ -19,71 +19,95 @@ type MaintenanceService interface {
 
 type maintenanceService struct {
 	repo   repository.MaintenanceRepository
-	logger *log.Logger
+	logger *logrus.Logger
 }
 
-func NewMaintenanceService(repo repository.MaintenanceRepository, logger *log.Logger) MaintenanceService {
+func NewMaintenanceService(repo repository.MaintenanceRepository, logger *logrus.Logger) MaintenanceService {
 	return &maintenanceService{repo: repo, logger: logger}
 }
 
 func (m *maintenanceService) Create(ctx context.Context, maintenance *model.Maintenance) error {
-	m.logger.Printf("[CREATE] Creating Maintenance Log : ID:%s, \n Start:%s, \n End:%s \n Nama:%s \n Laporan:%s \n Status : %v",
-		maintenance.ID, maintenance.Start, maintenance.End, maintenance.Nama, maintenance.Laporan, maintenance.Status)
+	m.logger.WithFields(logrus.Fields{
+		"ID":      maintenance.ID,
+		"Start":   maintenance.Start,
+		"End":     maintenance.End,
+		"Nama":    maintenance.Nama,
+		"Laporan": maintenance.Laporan,
+		"Status":  maintenance.Status,
+	}).Info("[CREATE] Creating Maintenance Log")
 
 	err := m.repo.Create(ctx, maintenance)
 	if err != nil {
-		m.logger.Println("[CREATE] Error Maintenance Log ", err)
+		m.logger.WithFields(logrus.Fields{
+			"ID":      maintenance.ID,
+			"Start":   maintenance.Start,
+			"End":     maintenance.End,
+			"Nama":    maintenance.Nama,
+			"Laporan": maintenance.Laporan,
+			"Status":  maintenance.Status,
+		}).WithError(err).Error("[CREATE] Error creating Maintenance Log")
 		return err
 	}
-	m.logger.Printf("[CREATE] Maintenance Log Successfully Created: ID:%s, \n Start:%s, \n End:%s \n Nama:%s \n Laporan:%s \n Status : %v",
-		maintenance.ID, maintenance.Start, maintenance.End, maintenance.Nama, maintenance.Laporan, maintenance.Status)
+
+	m.logger.WithFields(logrus.Fields{
+		"ID":      maintenance.ID,
+		"Start":   maintenance.Start,
+		"End":     maintenance.End,
+		"Nama":    maintenance.Nama,
+		"Laporan": maintenance.Laporan,
+		"Status":  maintenance.Status,
+	}).Info("[CREATE] Maintenance Log Successfully Created")
 	return nil
 }
 
 func (m *maintenanceService) Update(ctx context.Context, id uuid.UUID, maintenance *model.Maintenance) error {
-	m.logger.Printf("[UPDATE] Updating Maintenance Log with ID: %s", id)
+	m.logger.WithField("MaintenanceID", id).Info("[UPDATE] Updating Maintenance Log")
 
 	err := m.repo.Update(ctx, id, maintenance)
 	if err != nil {
-		m.logger.Println("[UPDATE] Error updating Maintenance Log:", err)
+		m.logger.WithField("MaintenanceID", id).WithError(err).Error("[UPDATE] Error updating Maintenance Log")
 		return err
 	}
-	m.logger.Printf("[UPDATE] Maintenance Log Successfully Updated: ID:%s", id)
+
+	m.logger.WithField("MaintenanceID", id).Info("[UPDATE] Maintenance Log Successfully Updated")
 	return nil
 }
 
 func (m *maintenanceService) Delete(ctx context.Context, id uuid.UUID) error {
-	m.logger.Printf("[DELETE] Deleting Maintenance Log with ID: %s", id)
+	m.logger.WithField("MaintenanceID", id).Info("[DELETE] Deleting Maintenance Log")
 
 	err := m.repo.Delete(ctx, id)
 	if err != nil {
-		m.logger.Println("[DELETE] Error deleting Maintenance Log:", err)
+		m.logger.WithField("MaintenanceID", id).WithError(err).Error("[DELETE] Error deleting Maintenance Log")
 		return err
 	}
-	m.logger.Printf("[DELETE] Maintenance Log Successfully Deleted: ID:%s", id)
+
+	m.logger.WithField("MaintenanceID", id).Info("[DELETE] Maintenance Log Successfully Deleted")
 	return nil
 }
 
 func (m *maintenanceService) GetLogById(ctx context.Context, id uuid.UUID) (*model.Maintenance, error) {
-	m.logger.Printf("[GET] Fetching Maintenance Log for ID: %s", id)
+	m.logger.WithField("MaintenanceID", id).Info("[GET] Fetching Maintenance Log")
 
 	maintenance, err := m.repo.GetLogById(ctx, id)
 	if err != nil {
-		m.logger.Println("[GET] Error fetching Maintenance Log:", err)
+		m.logger.WithField("MaintenanceID", id).WithError(err).Error("[GET] Error fetching Maintenance Log")
 		return nil, err
 	}
-	m.logger.Printf("[GET] Successfully fetched Maintenance Log for ID: %s", id)
+
+	m.logger.WithField("MaintenanceID", id).Info("[GET] Successfully fetched Maintenance Log")
 	return maintenance, nil
 }
 
 func (m *maintenanceService) GetLogByLantai(ctx context.Context, lantai int) ([]model.Alat, error) {
-	m.logger.Printf("[GET] Fetching Maintenance Logs for lantai: %d", lantai)
+	m.logger.WithField("Lantai", lantai).Info("[GET] Fetching Maintenance Logs for lantai")
 
 	alats, err := m.repo.GetLogByLantai(ctx, lantai)
 	if err != nil {
-		m.logger.Println("[GET] Error fetching Maintenance Logs:", err)
+		m.logger.WithField("Lantai", lantai).WithError(err).Error("[GET] Error fetching Maintenance Logs")
 		return nil, err
 	}
-	m.logger.Printf("[GET] Successfully fetched Maintenance Logs for lantai: %d", lantai)
+
+	m.logger.WithField("Lantai", lantai).Info("[GET] Successfully fetched Maintenance Logs")
 	return alats, nil
 }

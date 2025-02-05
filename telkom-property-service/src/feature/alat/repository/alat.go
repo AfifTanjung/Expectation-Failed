@@ -2,9 +2,9 @@ package repository
 
 import (
 	"context"
-	"log"
 	"telkom-property-service/src/model"
 
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -16,46 +16,64 @@ type AlatRepository interface {
 
 type alatRepository struct {
 	db     *gorm.DB
-	logger *log.Logger
+	logger *logrus.Logger
 }
 
-func NewAlatRepository(db *gorm.DB, logger *log.Logger) AlatRepository {
+func NewAlatRepository(db *gorm.DB, logger *logrus.Logger) AlatRepository {
 	return &alatRepository{db: db, logger: logger}
 }
 
 func (r *alatRepository) Create(ctx context.Context, alat model.Alat) error {
-	r.logger.Printf("[Create] Creating alat: ID=%s, Nama=%s", alat.ID, alat.Nama)
-	r.logger.Printf("Data before create: %+v\n", alat)
+	r.logger.WithFields(logrus.Fields{
+		"ID":   alat.ID,
+		"Nama": alat.Nama,
+	}).Info("[Create] Creating alat")
+
+	r.logger.WithFields(logrus.Fields{
+		"alat": alat,
+	}).Debug("[Create] Data before create")
+
 	if err := r.db.WithContext(ctx).Create(&alat).Error; err != nil {
-		r.logger.Printf("[Create] Error creating alat: %v", err)
+		r.logger.WithError(err).Error("[Create] Error creating alat")
 		return err
 	}
-	r.logger.Printf("[Create] Alat created successfully: ID=%s, Nama=%s", alat.ID, alat.Nama)
+
+	r.logger.WithFields(logrus.Fields{
+		"ID":   alat.ID,
+		"Nama": alat.Nama,
+	}).Info("[Create] Alat created successfully")
 	return nil
 }
 
 func (r *alatRepository) GetByLantai(ctx context.Context, lantai int) ([]model.Alat, error) {
 	var alats []model.Alat
-	r.logger.Printf("[GetByLantai] Fetching alat for lantai=%d", lantai)
+	r.logger.WithField("lantai", lantai).Info("[GetByLantai] Fetching alat")
+
 	if err := r.db.WithContext(ctx).Preload("Raws").Where("lantai = ?", lantai).Find(&alats).Error; err != nil {
-		r.logger.Printf("[GetByLantai] Error fetching alat: %v", err)
+		r.logger.WithError(err).Error("[GetByLantai] Error fetching alat")
 		return nil, err
 	}
+
 	for _, alat := range alats {
-		r.logger.Printf("[GetByLantai] Alat ID=%v has %d raws", alat.ID, len(alat.Raws))
+		r.logger.WithFields(logrus.Fields{
+			"ID":   alat.ID,
+			"Raws": len(alat.Raws),
+		}).Debug("[GetByLantai] Alat fetched")
 	}
 
-	r.logger.Printf("[GetByLantai] Successfully fetched %d alat(s)", len(alats))
+	r.logger.WithField("count", len(alats)).Info("[GetByLantai] Successfully fetched alat(s)")
 	return alats, nil
 }
 
 func (r *alatRepository) GetByStasiun(ctx context.Context, stasiun string) ([]model.Alat, error) {
 	var alats []model.Alat
-	r.logger.Printf("[GetByStasiun] Fetching alat for stasiun=%s", stasiun)
+	r.logger.WithField("stasiun", stasiun).Info("[GetByStasiun] Fetching alat")
+
 	if err := r.db.WithContext(ctx).Where("stasiun = ?", stasiun).Find(&alats).Error; err != nil {
-		r.logger.Printf("[GetByStasiun] Error fetching alat: %v", err)
+		r.logger.WithError(err).Error("[GetByStasiun] Error fetching alat")
 		return nil, err
 	}
-	r.logger.Printf("[GetByStasiun] Successfully fetched %d alat(s)", len(alats))
+
+	r.logger.WithField("count", len(alats)).Info("[GetByStasiun] Successfully fetched alat(s)")
 	return alats, nil
 }

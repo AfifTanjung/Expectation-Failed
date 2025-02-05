@@ -8,6 +8,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/sirupsen/logrus"
 
 	alatController "telkom-property-service/src/feature/alat/controller"
 	alatRepo "telkom-property-service/src/feature/alat/repository"
@@ -30,30 +31,32 @@ func SetupRoutes() *gin.Engine {
 	if err := godotenv.Load(); err != nil {
 		log.Println("Warning: .env file not found, using system environment variables.")
 	}
+
 	db, err := pkg.InitDb()
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
-	logger := log.Default()
+
+	logger := logrus.New()
 
 	// Alat Dependencies
-	alatRepo := alatRepo.NewAlatRepository(db, logger)
-	alatService := alatService.NewAlatService(alatRepo, logger)
+	alatRepository := alatRepo.NewAlatRepository(db, logger)
+	alatService := alatService.NewAlatService(alatRepository, logger)
 	alatCtrl := alatController.NewAlatController(alatService)
 
 	// Raw Dependencies
-	rawRepo := rawRepo.NewRawRepository(db, logger)
-	rawService := rawService.NewRawService(rawRepo, logger)
+	rawRepository := rawRepo.NewRawRepository(db, logger)
+	rawService := rawService.NewRawService(rawRepository, logger)
 	rawCtrl := rawController.NewRawController(rawService)
 
 	// Validation Dependencies
-	validRepo := validRepo.NewValidationRepository(db, logger)
-	validService := validServ.NewValidationService(validRepo)
+	validRepository := validRepo.NewValidationRepository(db, logger)
+	validService := validServ.NewValidationService(validRepository, logger)
 	validCtrl := validCont.NewValidationController(validService)
 
 	// Maintenance Dependencies
-	maintRepo := maintRepo.NewMaintenanceRepository(db, logger)
-	maintService := maintService.NewMaintenanceService(maintRepo, logger)
+	maintRepository := maintRepo.NewMaintenanceRepository(db, logger)
+	maintService := maintService.NewMaintenanceService(maintRepository, logger)
 	maintCtrl := maintController.NewMaintenanceController(maintService)
 
 	r := gin.Default()
@@ -114,7 +117,7 @@ func SetupRoutes() *gin.Engine {
 	}
 
 	// Maintenance Routes
-	maintenanceGroup := r.Group("/maintenance")
+	maintenanceGroup := r.Group("/api/maintenance")
 	{
 		maintenanceGroup.POST("/", maintCtrl.Create)
 		maintenanceGroup.PUT("/:id", maintCtrl.Update)
