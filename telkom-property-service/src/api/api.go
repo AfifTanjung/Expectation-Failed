@@ -79,7 +79,7 @@ func SetupRoutes() *gin.Engine {
 		})
 	})
 
-	r.GET("/server-time", func(ctx *gin.Context) {
+	r.GET("/", func(ctx *gin.Context) {
 		location, err := time.LoadLocation("Asia/Jakarta")
 		if err != nil {
 			ctx.JSON(500, gin.H{
@@ -95,36 +95,22 @@ func SetupRoutes() *gin.Engine {
 		})
 	})
 
-	// Alat Routes
-	alatsGroup := r.Group("/alats")
+	apiGroup := r.Group("/api/v1")
 	{
-		alatsGroup.POST("", alatCtrl.CreateAlat)
-		alatsGroup.GET("/lantai/:lantai", alatCtrl.GetByLantai)
-		alatsGroup.GET("/stasiun/:stasiun", alatCtrl.GetByStasiun)
+		apiGroup.POST("/alat", alatCtrl.CreateAlat)
+		apiGroup.GET("/alat/lantai/:lantai", alatCtrl.GetByLantai)
+		apiGroup.GET("/alat/stasiun/:stasiun", alatCtrl.GetByStasiun)
+		// raw
+		apiGroup.POST("/raws/:alatId", rawCtrl.CreateByAlatId)
+		apiGroup.GET("/raws/:alatId", rawCtrl.GetById)
+		//validation
+		apiGroup.POST("/validate", validCtrl.ValidateDataHandler)
+		//maintenance
+		apiGroup.POST("/maintenance/", maintCtrl.Create)
+		apiGroup.PUT("/maintenance/:id", maintCtrl.Update)
+		apiGroup.DELETE("/maintenance/:id", maintCtrl.Delete)
+		apiGroup.GET("/maintenance/:id", maintCtrl.GetLogById)
+		apiGroup.GET("/maintenance/lantai/:lantai", maintCtrl.GetLogByLantai)
 	}
-
-	// Raw Routes
-	rawsGroup := r.Group("/raws")
-	{
-		rawsGroup.POST("/:alatId", rawCtrl.CreateByAlatId)
-		rawsGroup.GET("/:alatId", rawCtrl.GetById)
-	}
-
-	// Validation Routes
-	validationGroup := r.Group("/validations")
-	{
-		validationGroup.POST("/validate", validCtrl.ValidateDataHandler)
-	}
-
-	// Maintenance Routes
-	maintenanceGroup := r.Group("/api/maintenance")
-	{
-		maintenanceGroup.POST("/", maintCtrl.Create)
-		maintenanceGroup.PUT("/:id", maintCtrl.Update)
-		maintenanceGroup.DELETE("/:id", maintCtrl.Delete)
-		maintenanceGroup.GET("/:id", maintCtrl.GetLogById)
-		maintenanceGroup.GET("/lantai/:lantai", maintCtrl.GetLogByLantai)
-	}
-
 	return r
 }

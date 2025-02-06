@@ -103,6 +103,7 @@ func (c *RawController) GetById(ctx *gin.Context) {
 		"data": gin.H{
 			"alat_uuid": alat.ID.String(),
 			"namaAlat":  alat.Nama,
+			"type":      alat.Type,
 			"dataRaw":   formatRawData(rawData),
 		},
 	})

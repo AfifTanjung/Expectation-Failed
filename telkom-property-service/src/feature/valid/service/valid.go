@@ -31,18 +31,23 @@ func NewValidationService(repo repository.ValidationRepository, logger *logrus.L
 func (s *validationService) ValidateData(ctx context.Context) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-
 	s.logger.Info("Starting data validation process...")
-	raws, err := s.repo.GetPendingRawData(timeoutCtx, 100, 0)
-	if err != nil {
-		s.logger.WithError(err).Error("Error fetching raw data")
-		return err
+
+	// Ambil data berdasarkan tipe alat (IAQMS dan OAQMS)
+	types := []string{model.IAQMS, model.OAQMS} // Gunakan model.AlatType
+	var allRaws []model.Raw
+	for _, alatType := range types {
+		raws, err := s.repo.GetPendingRawData(timeoutCtx, alatType, 100, 0)
+		if err != nil {
+			s.logger.WithError(err).Errorf("Error fetching raw data for type: %s", alatType)
+			return err
+		}
+		allRaws = append(allRaws, raws...)
 	}
 
 	var wg sync.WaitGroup
-	ch := make(chan error, len(raws))
-
-	for _, raw := range raws {
+	ch := make(chan error, len(allRaws))
+	for _, raw := range allRaws {
 		wg.Add(1)
 		go func(raw model.Raw) {
 			defer wg.Done()
@@ -51,7 +56,6 @@ func (s *validationService) ValidateData(ctx context.Context) error {
 			}
 		}(raw)
 	}
-
 	wg.Wait()
 	close(ch)
 
@@ -61,7 +65,6 @@ func (s *validationService) ValidateData(ctx context.Context) error {
 			return err
 		}
 	}
-
 	s.logger.Info("Data validation process completed successfully.")
 	return nil
 }
@@ -85,15 +88,14 @@ func (s *validationService) processRaw(ctx context.Context, raw model.Raw) error
 }
 
 func (s *validationService) validateByAlatType(raw model.Raw) (bool, model.Valid, string) {
-	s.logger.Infof("Validating Raw ID %d with Alat Type: %s", raw.ID, raw.Alat.Nama)
-
-	switch raw.Alat.Nama {
-	case "IAQMS":
+	s.logger.Infof("Validating Raw ID %d with Alat Type: %s", raw.ID, raw.Alat.Type)
+	switch raw.Alat.Type {
+	case model.IAQMS:
 		return s.validateIAQMS(raw)
-	case "OAQMS":
+	case model.OAQMS:
 		return s.validateOAQMS(raw)
 	default:
-		return false, model.Valid{}, "Unknown alat type"
+		return false, model.Valid{}, "Unknown alat Type"
 	}
 }
 
@@ -108,7 +110,6 @@ func (s *validationService) validateOAQMS(raw model.Raw) (bool, model.Valid, str
 func validateSensorData(raw model.Raw, ranges ...float64) (bool, model.Valid, string) {
 	values := []string{raw.Co2, raw.Pm2_5, raw.Temp, raw.Hum, raw.Ws, raw.Wd}
 	validData := model.Valid{RawID: raw.ID, WaktuMasuk: raw.WaktuMasuk}
-
 	for i, val := range values {
 		if i >= len(ranges)/2 {
 			break

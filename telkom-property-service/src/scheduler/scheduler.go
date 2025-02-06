@@ -9,7 +9,7 @@ import (
 )
 
 func hitApi() {
-	resp, err := http.Post("http://localhost:3001/validations/validate", "application/json", nil)
+	resp, err := http.Post("http://localhost:3001/api/v1/data/validate", "application/json", nil)
 	if err != nil {
 		fmt.Println("Error Hit API:", err)
 		return

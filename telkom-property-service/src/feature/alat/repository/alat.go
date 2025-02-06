@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"telkom-property-service/src/model"
 
 	"github.com/sirupsen/logrus"
@@ -10,7 +11,7 @@ import (
 
 type AlatRepository interface {
 	Create(ctx context.Context, alat model.Alat) error
-	GetByLantai(ctx context.Context, lantai int) ([]model.Alat, error)
+	GetByLantai(ctx context.Context, lantai int, limit, offset int) ([]model.Alat, error)
 	GetByStasiun(ctx context.Context, stasiun string) ([]model.Alat, error)
 }
 
@@ -24,8 +25,12 @@ func NewAlatRepository(db *gorm.DB, logger *logrus.Logger) AlatRepository {
 }
 
 func (r *alatRepository) Create(ctx context.Context, alat model.Alat) error {
+	if alat.Nama == "" || alat.Lantai == 0 || alat.Stasiun == "" {
+		return fmt.Errorf("nama, lantai, and stasiun are required fields")
+	}
 	r.logger.WithFields(logrus.Fields{
 		"ID":   alat.ID,
+		"type": alat.Type,
 		"Nama": alat.Nama,
 	}).Info("[Create] Creating alat")
 
@@ -40,25 +45,27 @@ func (r *alatRepository) Create(ctx context.Context, alat model.Alat) error {
 
 	r.logger.WithFields(logrus.Fields{
 		"ID":   alat.ID,
+		"type": alat.Type,
 		"Nama": alat.Nama,
 	}).Info("[Create] Alat created successfully")
 	return nil
 }
 
-func (r *alatRepository) GetByLantai(ctx context.Context, lantai int) ([]model.Alat, error) {
+func (r *alatRepository) GetByLantai(ctx context.Context, lantai int, limit, offset int) ([]model.Alat, error) {
 	var alats []model.Alat
 	r.logger.WithField("lantai", lantai).Info("[GetByLantai] Fetching alat")
 
-	if err := r.db.WithContext(ctx).Preload("Raws").Where("lantai = ?", lantai).Find(&alats).Error; err != nil {
-		r.logger.WithError(err).Error("[GetByLantai] Error fetching alat")
-		return nil, err
+	query := r.db.WithContext(ctx).Preload("Raws").Where("lantai = ?", lantai)
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	if offset > 0 {
+		query = query.Offset(offset)
 	}
 
-	for _, alat := range alats {
-		r.logger.WithFields(logrus.Fields{
-			"ID":   alat.ID,
-			"Raws": len(alat.Raws),
-		}).Debug("[GetByLantai] Alat fetched")
+	if err := query.Find(&alats).Error; err != nil {
+		r.logger.WithError(err).Error("[GetByLantai] Error fetching alat")
+		return nil, fmt.Errorf("failed to fetch alat by lantai: %w", err)
 	}
 
 	r.logger.WithField("count", len(alats)).Info("[GetByLantai] Successfully fetched alat(s)")

@@ -27,6 +27,7 @@ func (c *AlatController) CreateAlat(ctx *gin.Context) {
 		})
 		return
 	}
+
 	if err := c.service.CreateAlat(ctx.Request.Context(), alat); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -35,12 +36,14 @@ func (c *AlatController) CreateAlat(ctx *gin.Context) {
 		})
 		return
 	}
+
 	ctx.JSON(http.StatusCreated, gin.H{
 		"success": true,
 		"message": "Alat created successfully",
 		"data":    alat,
 	})
 }
+
 func (c *AlatController) GetByLantai(ctx *gin.Context) {
 	lantaiParam := ctx.Param("lantai")
 	lantai, err := strconv.Atoi(lantaiParam)
@@ -52,8 +55,23 @@ func (c *AlatController) GetByLantai(ctx *gin.Context) {
 		})
 		return
 	}
-
-	alats, err := c.service.GetAlatByLantai(ctx.Request.Context(), lantai)
+	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
+	offset, _ := strconv.Atoi(ctx.DefaultQuery("offset", "0"))
+	if limit < 0 {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Limit must be a non-negative number",
+		})
+		return
+	}
+	if offset < 0 {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Offset must be a non-negative number",
+		})
+		return
+	}
+	alats, err := c.service.GetAlatByLantai(ctx.Request.Context(), lantai, limit, offset)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -71,11 +89,13 @@ func (c *AlatController) GetByLantai(ctx *gin.Context) {
 		})
 		return
 	}
+
 	responseData := []gin.H{}
 	for _, alat := range alats {
 		responseData = append(responseData, gin.H{
 			"id":         alat.ID,
 			"nama":       alat.Nama,
+			"type":       alat.Type,
 			"lantai":     alat.Lantai,
 			"stasiun":    alat.Stasiun,
 			"created_at": alat.CreatedAt,
@@ -88,6 +108,11 @@ func (c *AlatController) GetByLantai(ctx *gin.Context) {
 		"success": true,
 		"message": "Alat fetched successfully by lantai",
 		"data":    responseData,
+		"meta": gin.H{
+			"limit":  limit,
+			"offset": offset,
+			"total":  len(alats),
+		},
 	})
 }
 
