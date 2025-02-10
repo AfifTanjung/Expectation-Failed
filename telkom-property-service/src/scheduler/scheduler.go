@@ -20,7 +20,7 @@ func hitApi() {
 
 func StartScheduler() *cron.Cron {
 	c := cron.New()
-	c.AddFunc("@every 1m", hitApi)
+	c.AddFunc("@every 2m", hitApi)
 	c.Start()
 	fmt.Println("Scheduler Started...")
 	return c

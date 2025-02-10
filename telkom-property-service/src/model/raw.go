@@ -15,6 +15,7 @@ type Raw struct {
 	Hum              string    `gorm:"type:varchar(50)" json:"hum"`
 	Ws               string    `gorm:"type:varchar(50)" json:"ws"` // Wind Speed
 	Wd               string    `gorm:"type:varchar(50)" json:"wd"` // Wind Direction
+	WaktuTerima      string    `gorm:"type:varchar(20)" json:"waktuTerima"`
 	WaktuMasuk       time.Time `json:"waktuMasuk"`
 	IsValidated      bool      `gorm:"default:false" json:"is_validated"`
 	ValidationStatus string    `gorm:"type:varchar(50);default:'pending'" json:"validation_status"`
