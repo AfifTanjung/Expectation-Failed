@@ -1,12 +1,13 @@
-version: '3.8'
 services:
-  user-service:
-    build: ./cmd
+  BE_Microservice-Deploy/telkom-property-service:
+    build: .BE_Microservice-Deploy/telkom-property-service
     ports:
       - "8080:8080"
-    networks:
-      - microservice
+    depends_on:
+      - auth-admin
 
-networks:
-  microservices-network:
-    driver: bridge
+  auth-admin:
+    build: ./auth-admin
+    ports:
+      - "8080:8080"
+

@@ -26,7 +26,7 @@ func (mc *MaintenanceController) Create(c *gin.Context) {
 	}
 
 	if err := mc.service.Create(c.Request.Context(), &maintenance); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create maintenance log"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create maintenance log", "detail":err.Error()})
 		return
 	}
 
@@ -81,7 +81,7 @@ func (mc *MaintenanceController) Delete(c *gin.Context) {
 func (mc *MaintenanceController) GetLogById(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format", "detail": err.Error()})
 		return
 	}
 
@@ -90,6 +90,12 @@ func (mc *MaintenanceController) GetLogById(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Maintenance log not found"})
 		return
 	}
+
+	 if maintenance.ID == uuid.Nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "Maintenance log not found"})
+        return
+    }
+
 
 	c.JSON(http.StatusOK, gin.H{
 		"status":  false,

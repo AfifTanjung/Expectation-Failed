@@ -40,12 +40,12 @@ func (c *RawController) CreateByAlatId(ctx *gin.Context) {
 		})
 		return
 	}
+
 	ctx.JSON(http.StatusCreated, gin.H{
 		"status": "success",
 		"dataRaw": gin.H{
 			"id":          raw.ID,
 			"waktuMasuk":  raw.WaktuMasuk,
-			"WaktuTerima": raw.WaktuTerima,
 			"co2":         raw.Co2,
 			"pm2_5":       raw.Pm2_5,
 			"temperature": raw.Temp,
@@ -63,7 +63,6 @@ func formatRawData(raws []model.Raw) []gin.H {
 		formattedData = append(formattedData, gin.H{
 			"id":          raw.ID,
 			"waktuMasuk":  raw.WaktuMasuk,
-			"WaktuTerima": raw.WaktuTerima,
 			"co2":         raw.Co2,
 			"pm2_5":       raw.Pm2_5,
 			"temperature": raw.Temp,

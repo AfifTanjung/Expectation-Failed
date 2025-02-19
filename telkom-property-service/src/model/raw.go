@@ -1,8 +1,6 @@
 package model
 
 import (
-	"time"
-
 	"github.com/google/uuid"
 )
 
@@ -13,10 +11,9 @@ type Raw struct {
 	Pm2_5            string    `gorm:"type:varchar(50)" json:"pm2_5"`
 	Temp             string    `gorm:"type:varchar(50)" json:"temp"`
 	Hum              string    `gorm:"type:varchar(50)" json:"hum"`
-	Ws               string    `gorm:"type:varchar(50)" json:"ws"` // Wind Speed
-	Wd               string    `gorm:"type:varchar(50)" json:"wd"` // Wind Direction
-	WaktuTerima      string    `gorm:"type:varchar(20)" json:"waktuTerima"`
-	WaktuMasuk       time.Time `json:"waktuMasuk"`
+	Ws               string    `gorm:"type:varchar(50)" json:"ws"`
+	Wd               string    `gorm:"type:varchar(50)" json:"wd"`
+	WaktuMasuk       string    `json:"waktuMasuk"`
 	IsValidated      bool      `gorm:"default:false" json:"is_validated"`
 	ValidationStatus string    `gorm:"type:varchar(50);default:'pending'" json:"validation_status"`
 	Valid            Valid     `gorm:"foreignKey:RawID;constraint:OnDelete:CASCADE;"`

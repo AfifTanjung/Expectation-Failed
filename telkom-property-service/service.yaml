@@ -1,0 +1,21 @@
+# service.yaml
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: telkom-service
+spec:
+  template:
+    spec:
+      containers:
+      - image: gcr.io/biru-langit-450303/telkom-service
+        ports:
+        - containerPort: 8080
+        env:
+        - name: PORT
+          value: "8080"
+        startupProbe:
+          httpGet:
+            path: /health # Pastikan ada endpoint /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 3

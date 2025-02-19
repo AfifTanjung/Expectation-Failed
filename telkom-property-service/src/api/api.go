@@ -2,13 +2,15 @@ package api
 
 import (
 	"log"
-	"telkom-property-service/pkg"
 	"time"
+
+	"telkom-property-service/src/feature/admin/middleware"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 
 	alatController "telkom-property-service/src/feature/alat/controller"
 	alatRepo "telkom-property-service/src/feature/alat/repository"
@@ -25,19 +27,28 @@ import (
 	maintController "telkom-property-service/src/feature/maintenance/controller"
 	maintRepo "telkom-property-service/src/feature/maintenance/repository"
 	maintService "telkom-property-service/src/feature/maintenance/service"
+
+	authController "telkom-property-service/src/feature/admin/controller"
+	authRepo "telkom-property-service/src/feature/admin/repository"
+	authService "telkom-property-service/src/feature/admin/service"
 )
 
-func SetupRoutes() *gin.Engine {
+func SetupRoutes(db *gorm.DB) *gin.Engine {
 	if err := godotenv.Load(); err != nil {
 		log.Println("Warning: .env file not found, using system environment variables.")
 	}
 
-	db, err := pkg.InitDb()
-	if err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+	// Pastikan db tidak nil sebelum digunakan
+	if db == nil {
+		log.Fatal("Database connection is nil, cannot proceed with route setup")
 	}
 
 	logger := logrus.New()
+
+	// Auth Dependencies
+	authRepository := authRepo.NewAuthRepository(db, logger)
+	authService := authService.NewAuthService(authRepository, logger)
+	authCtrl := authController.NewAuthController(authService)
 
 	// Alat Dependencies
 	alatRepository := alatRepo.NewAlatRepository(db, logger)
@@ -52,7 +63,7 @@ func SetupRoutes() *gin.Engine {
 	// Validation Dependencies
 	validRepository := validRepo.NewValidationRepository(db, logger)
 	validService := validServ.NewValidationService(validRepository, logger)
-	validCtrl := validCont.NewValidationController(validService)
+	validCtrl := validCont.NewValidationController(validService, logger)
 
 	// Maintenance Dependencies
 	maintRepository := maintRepo.NewMaintenanceRepository(db, logger)
@@ -78,8 +89,13 @@ func SetupRoutes() *gin.Engine {
 			"success": true,
 		})
 	})
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status": "ok",
+		})
+	})
 
-	r.GET("/", func(ctx *gin.Context) {
+	r.GET("/server-time", func(ctx *gin.Context) {
 		location, err := time.LoadLocation("Asia/Jakarta")
 		if err != nil {
 			ctx.JSON(500, gin.H{
@@ -104,13 +120,20 @@ func SetupRoutes() *gin.Engine {
 		apiGroup.POST("/raws/:alatId", rawCtrl.CreateByAlatId)
 		apiGroup.GET("/raws/:alatId", rawCtrl.GetById)
 		//validation
-		apiGroup.POST("/validate", validCtrl.ValidateDataHandler)
+		apiGroup.POST("/validation/process", validCtrl.ValidateDataHandler)
+		apiGroup.POST("/validation/process-batch", validCtrl.ValidateBatchHandler)
+		apiGroup.GET("/validation/health", validCtrl.HealthCheckHandler)
 		//maintenance
-		apiGroup.POST("/maintenance/", maintCtrl.Create)
-		apiGroup.PUT("/maintenance/:id", maintCtrl.Update)
-		apiGroup.DELETE("/maintenance/:id", maintCtrl.Delete)
-		apiGroup.GET("/maintenance/:id", maintCtrl.GetLogById)
-		apiGroup.GET("/maintenance/lantai/:lantai", maintCtrl.GetLogByLantai)
+		apiGroup.POST("/maintenance/", middleware.JWTMiddleware(),  maintCtrl.Create)
+		apiGroup.PUT("/maintenance/:id", middleware.JWTMiddleware(), maintCtrl.Update)
+		apiGroup.DELETE("/maintenance/:id", middleware.JWTMiddleware(), maintCtrl.Delete)
+		apiGroup.GET("/maintenance/:id", middleware.JWTMiddleware(),  maintCtrl.GetLogById)
+		apiGroup.GET("/maintenance/lantai/:lantai", middleware.JWTMiddleware(), maintCtrl.GetLogByLantai)
+		// admin
+		apiGroup.POST("admin/register", authCtrl.Register)
+		apiGroup.POST("admin/login", authCtrl.Login)
+
 	}
+
 	return r
 }

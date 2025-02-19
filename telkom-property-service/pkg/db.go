@@ -5,45 +5,99 @@ import (
 	"log"
 	"os"
 	"telkom-property-service/src/model"
+	"time"
 
-	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 func InitDb() (*gorm.DB, error) {
-	if err := godotenv.Load(); err != nil {
-		log.Println("Warning: .env file not found, using system environment variables.")
+	var dsn string
+
+	// Ambil environment variables
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
+	dbHost := os.Getenv("DB_HOST")
+	instanceConnectionName := os.Getenv("INSTANCE_CONNECTION_NAME")
+	isLocal := os.Getenv("LOCAL_ENV")
+
+	// Validasi konfigurasi database
+	if dbUser == "" || dbPassword == "" || dbName == "" {
+		log.Fatalf("Database configuration is missing! Please set DB_USER, DB_PASSWORD, DB_NAME.")
 	}
-	host := os.Getenv("DB_HOST")
-	user := os.Getenv("DB_USER")
-	password := os.Getenv("DB_PASSWORD")
-	name := os.Getenv("DB_NAME")
-	port := os.Getenv("DB_PORT")
 
-	if host == "" || user == "" || password == "" || name == "" || port == "" {
-		return nil, fmt.Errorf("database configuration is missing or incomplete")
+	// Konfigurasi koneksi database
+	if instanceConnectionName != "" && !isLocalSet(isLocal) {
+		// Koneksi melalui Unix Socket (Cloud SQL)
+		dsn = fmt.Sprintf(
+			"host=/cloudsql/%s user=%s password=%s dbname=%s sslmode=disable",
+			instanceConnectionName, dbUser, dbPassword, dbName,
+		)
+		log.Println("Using Unix Socket connection for Cloud SQL")
+	} else if dbHost != "" {
+		// Koneksi via TCP untuk Cloud Run
+		dsn = fmt.Sprintf(
+			"host=%s user=%s password=%s dbname=%s port=5432 sslmode=disable",
+			dbHost, dbUser, dbPassword, dbName,
+		)
+		log.Println("Using standard TCP connection")
+	} else if isLocalSet(isLocal) {
+		// Koneksi ke database lokal jika ENV LOCAL_ENV diset
+		dsn = fmt.Sprintf(
+			"host=localhost user=%s password=%s dbname=%s port=5432 sslmode=disable",
+			dbUser, dbPassword, dbName,
+		)
+		log.Println("Using Localhost connection")
+	} else {
+		log.Fatalf("No valid database connection method found (set DB_HOST or INSTANCE_CONNECTION_NAME)")
 	}
 
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
-		host, user, password, name, port)
+	// Coba koneksi database dengan retry
+	var (
+		db  *gorm.DB
+		err error
+	)
+	maxRetries := 5
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	for i := 0; i < maxRetries; i++ {
+		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Info),
+		})
+		if err == nil {
+			log.Println("Database connection established successfully")
+			break
+		}
+		log.Printf("Database connection failed (attempt %d/%d): %v", i+1, maxRetries, err)
+
+		if i < maxRetries-1 {
+			time.Sleep(2 * time.Second) // Tunggu sebelum retry
+		}
+	}
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
+		log.Fatalf("Failed to connect to database after %d attempts: %v", maxRetries, err)
 	}
 
-	log.Println("Starting database migrations...")
+	// Lakukan migrasi
+	log.Println("Running database migrations...")
 	err = db.AutoMigrate(
 		&model.Alat{},
 		&model.Raw{},
 		&model.Valid{},
 		&model.Maintenance{},
+		&model.Admin{},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to perform database migrations: %w", err)
+		log.Fatalf("Database migration failed: %v", err)
 	}
 
-	log.Println("Database connection established and migrations completed successfully.")
+	log.Println("Database connected and migrations completed successfully.")
 	return db, nil
+}
+
+// Fungsi untuk mengecek jika environment LOCAL_ENV di set untuk pengembangan lokal
+func isLocalSet(isLocal string) bool {
+	return isLocal == "true"
 }

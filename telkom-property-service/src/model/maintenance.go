@@ -8,7 +8,7 @@ import (
 
 type Maintenance struct {
 	ID        uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4();primaryKey" json:"id"`
-	AlatID    uuid.UUID `gorm:"type:uuid;not null" json:"alatId"`
+	AlatID    uuid.UUID `gorm:"type:uuid;not null" json:"alat_id"`
 	Start     time.Time `json:"start"`
 	End       time.Time `json:"end"`
 	Nama      string    `json:"nama"`

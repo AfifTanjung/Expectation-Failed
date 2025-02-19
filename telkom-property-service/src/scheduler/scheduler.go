@@ -9,7 +9,7 @@ import (
 )
 
 func hitApi() {
-	resp, err := http.Post("http://localhost:3001/api/v1/data/validate", "application/json", nil)
+	resp, err := http.Post("https://telkom-service-319971276127.asia-southeast2.run.app/api/v1/validation/process-batch", "application/json", nil)
 	if err != nil {
 		fmt.Println("Error Hit API:", err)
 		return
@@ -20,7 +20,7 @@ func hitApi() {
 
 func StartScheduler() *cron.Cron {
 	c := cron.New()
-	c.AddFunc("@every 2m", hitApi)
+	c.AddFunc("@every 1m", hitApi)
 	c.Start()
 	fmt.Println("Scheduler Started...")
 	return c
